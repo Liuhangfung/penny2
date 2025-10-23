@@ -218,8 +218,8 @@ let qrCodeCheckInterval;
 
 function checkForQRCode() {
     // Get first active job
-    {% for job_id in active_jobs.keys() %}
-    fetch('/api/job-status/{{ job_id }}')
+    {% set first_job_id = active_jobs.keys() | list | first %}
+    fetch('/api/job-status/{{ first_job_id }}')
         .then(response => response.json())
         .then(data => {
             if (data.qr_code_available && data.qr_code_file) {
@@ -240,8 +240,6 @@ function checkForQRCode() {
             }
         })
         .catch(error => console.error('Error checking QR code:', error));
-    {% break %}
-    {% endfor %}
 }
 
 // Check for QR code every 2 seconds
