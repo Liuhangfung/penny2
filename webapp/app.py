@@ -178,6 +178,37 @@ async def run_scraping_job(job_id: str, job_config: dict):
         job_history.append(active_jobs[job_id].copy())
 
 
+@app.get("/api/job-status/{job_id}")
+async def get_job_status(job_id: str):
+    """Get current job status including QR code info"""
+    if job_id in active_jobs:
+        job_info = active_jobs[job_id].copy()
+        
+        # Check for QR code files
+        qr_code_path = None
+        import glob
+        qr_files = sorted(glob.glob("/tmp/*.PNG"), key=os.path.getmtime, reverse=True)
+        if qr_files:
+            # Get the most recent QR code
+            qr_code_path = qr_files[0]
+            job_info["qr_code_available"] = True
+            job_info["qr_code_file"] = os.path.basename(qr_code_path)
+        else:
+            job_info["qr_code_available"] = False
+            
+        return JSONResponse(job_info)
+    return JSONResponse({"error": "Job not found"}, status_code=404)
+
+
+@app.get("/api/qrcode/{filename}")
+async def get_qrcode(filename: str):
+    """Serve QR code image"""
+    qr_path = f"/tmp/{filename}"
+    if os.path.exists(qr_path):
+        return FileResponse(qr_path, media_type="image/png")
+    return JSONResponse({"error": "QR code not found"}, status_code=404)
+
+
 @app.get("/view-data", response_class=HTMLResponse)
 async def view_data_page(request: Request, platform: Optional[str] = "xhs", page: int = 1):
     """Page to view scraped data with pagination"""

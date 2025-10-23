@@ -109,6 +109,31 @@
                         </tbody>
                     </table>
                 </div>
+                
+                <!-- QR Code Display Section -->
+                <div id="qrCodeSection" style="display: none;" class="mt-4 p-4 border-top">
+                    <div class="row">
+                        <div class="col-md-6 mx-auto text-center">
+                            <h5 class="text-primary">
+                                <i class="bi bi-qr-code"></i> Scan QR Code to Login
+                            </h5>
+                            <p class="text-muted">Use your XiaoHongShu app to scan this QR code</p>
+                            <div class="card">
+                                <div class="card-body">
+                                    <img id="qrCodeImage" src="" alt="QR Code" 
+                                         style="max-width: 300px; width: 100%;" 
+                                         class="img-fluid">
+                                    <div class="mt-3">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Waiting for scan...</span>
+                                        </div>
+                                        <p class="mt-2 text-muted">Waiting for you to scan...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -187,8 +212,45 @@ function refreshJobs() {
     location.reload();
 }
 
-// Auto-refresh every 10 seconds if there are active jobs
+// Check for QR codes in active jobs
 {% if active_jobs %}
+let qrCodeCheckInterval;
+
+function checkForQRCode() {
+    // Get first active job
+    {% for job_id in active_jobs.keys() %}
+    fetch('/api/job-status/{{ job_id }}')
+        .then(response => response.json())
+        .then(data => {
+            if (data.qr_code_available && data.qr_code_file) {
+                // Show QR code section
+                document.getElementById('qrCodeSection').style.display = 'block';
+                
+                // Update QR code image
+                const qrImage = document.getElementById('qrCodeImage');
+                qrImage.src = '/api/qrcode/' + data.qr_code_file;
+                
+                // Stop checking after finding QR code
+                // clearInterval(qrCodeCheckInterval);
+            }
+            
+            // If job is completed or failed, hide QR code section
+            if (data.status === 'completed' || data.status === 'failed') {
+                document.getElementById('qrCodeSection').style.display = 'none';
+            }
+        })
+        .catch(error => console.error('Error checking QR code:', error));
+    {% break %}
+    {% endfor %}
+}
+
+// Check for QR code every 2 seconds
+qrCodeCheckInterval = setInterval(checkForQRCode, 2000);
+
+// Also check immediately
+checkForQRCode();
+
+// Auto-refresh every 10 seconds
 setTimeout(function() {
     location.reload();
 }, 10000);
