@@ -92,11 +92,63 @@
                         </a>
                     </div>
                 </form>
+
+                <!-- QR Code Section (hidden initially) -->
+                <div id="qrCodeSection" style="display: none;">
+                    <div class="text-center">
+                        <div class="alert alert-success mb-4">
+                            <i class="bi bi-check-circle"></i> <strong>Job Started Successfully!</strong>
+                        </div>
+                        
+                        <h4 class="text-primary mb-3">
+                            <i class="bi bi-qr-code"></i> Scan QR Code to Login
+                        </h4>
+                        <p class="text-muted mb-4">Use your mobile app to scan this QR code</p>
+                        
+                        <div class="card mb-4">
+                            <div class="card-body p-4">
+                                <div id="qrCodeLoading" class="text-center">
+                                    <div class="spinner-border text-primary mb-3" role="status">
+                                        <span class="visually-hidden">Loading QR code...</span>
+                                    </div>
+                                    <p class="text-muted">Generating QR code...</p>
+                                </div>
+                                
+                                <div id="qrCodeDisplay" style="display: none;">
+                                    <img id="qrCodeImage" src="" alt="QR Code" 
+                                         style="max-width: 350px; width: 100%; border: 3px solid #0d6efd; border-radius: 10px;" 
+                                         class="img-fluid mb-3">
+                                    <div class="mt-3">
+                                        <div class="spinner-border spinner-border-sm text-success me-2" role="status"></div>
+                                        <span class="text-success fw-bold">Waiting for you to scan...</span>
+                                        <p class="text-muted small mt-2">Time remaining: <span id="timeRemaining">120</span> seconds</p>
+                                    </div>
+                                </div>
+                                
+                                <div id="loginSuccess" style="display: none;" class="text-center">
+                                    <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
+                                    <h5 class="text-success mt-3">Login Successful!</h5>
+                                    <p class="text-muted">Starting to scrape data...</p>
+                                    <div class="spinner-border spinner-border-sm text-success mt-2" role="status"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <a href="/" class="btn btn-outline-primary">
+                                <i class="bi bi-speedometer2"></i> Go to Dashboard
+                            </a>
+                            <button onclick="location.reload()" class="btn btn-outline-secondary">
+                                <i class="bi bi-plus-circle"></i> Create Another Job
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Info Card -->
-        <div class="card mt-4 border-info">
+        <div id="infoCard" class="card mt-4 border-info">
             <div class="card-body">
                 <h5 class="card-title">
                     <i class="bi bi-info-circle text-info"></i> How it works
@@ -104,9 +156,9 @@
                 <ul class="mb-0">
                     <li>Fill in the form above with your requirements</li>
                     <li>Click "Start Scraping" to begin the job</li>
+                    <li>Scan the QR code to login (first time only)</li>
                     <li>The job will run in the background</li>
                     <li>View results in the "View Data" page when complete</li>
-                    <li>You'll need to scan QR code on first run to login</li>
                 </ul>
             </div>
         </div>
@@ -117,6 +169,10 @@
 
 {% block extra_js %}
 <script>
+let currentJobId = null;
+let qrCheckInterval = null;
+let timeRemainingCount = 120;
+
 document.getElementById('jobForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
@@ -136,19 +192,28 @@ document.getElementById('jobForm').addEventListener('submit', async function(e) 
         const result = await response.json();
         
         if (result.success) {
-            // Show success message
-            const alert = document.createElement('div');
-            alert.className = 'alert alert-success alert-dismissible fade show';
-            alert.innerHTML = `
-                <strong>Success!</strong> Job started successfully!
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            `;
-            document.querySelector('.container').insertBefore(alert, document.querySelector('.row'));
+            currentJobId = result.job_id;
             
-            // Redirect to dashboard after 2 seconds
-            setTimeout(() => {
-                window.location.href = '/';
-            }, 2000);
+            // Hide form and info card
+            document.getElementById('jobForm').style.display = 'none';
+            document.getElementById('infoCard').style.display = 'none';
+            
+            // Show QR code section
+            document.getElementById('qrCodeSection').style.display = 'block';
+            
+            // Start checking for QR code
+            checkForQRCode();
+            qrCheckInterval = setInterval(checkForQRCode, 2000);
+            
+            // Start countdown timer
+            const timerInterval = setInterval(() => {
+                timeRemainingCount--;
+                document.getElementById('timeRemaining').textContent = timeRemainingCount;
+                if (timeRemainingCount <= 0) {
+                    clearInterval(timerInterval);
+                }
+            }, 1000);
+            
         } else {
             throw new Error(result.message || 'Failed to start job');
         }
@@ -159,12 +224,55 @@ document.getElementById('jobForm').addEventListener('submit', async function(e) 
             <strong>Error!</strong> ${error.message}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         `;
-        document.querySelector('.container').insertBefore(alert, document.querySelector('.row'));
+        document.querySelector('.card-body').insertBefore(alert, document.getElementById('jobForm'));
         
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
     }
 });
+
+async function checkForQRCode() {
+    if (!currentJobId) return;
+    
+    try {
+        const response = await fetch(`/api/job-status/${currentJobId}`);
+        const data = await response.json();
+        
+        if (data.qr_code_available && data.qr_code_file) {
+            // Hide loading, show QR code
+            document.getElementById('qrCodeLoading').style.display = 'none';
+            document.getElementById('qrCodeDisplay').style.display = 'block';
+            
+            // Update QR code image
+            const qrImage = document.getElementById('qrCodeImage');
+            qrImage.src = '/api/qrcode/' + data.qr_code_file + '?t=' + new Date().getTime();
+        }
+        
+        // Check if login is successful (job is running and past the login phase)
+        if (data.status === 'completed' || (data.status === 'running' && data.progress > 30)) {
+            clearInterval(qrCheckInterval);
+            document.getElementById('qrCodeDisplay').style.display = 'none';
+            document.getElementById('loginSuccess').style.display = 'block';
+            
+            // Redirect to dashboard after 3 seconds
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 3000);
+        }
+        
+        // Handle failed jobs
+        if (data.status === 'failed') {
+            clearInterval(qrCheckInterval);
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-danger';
+            alert.innerHTML = '<i class="bi bi-exclamation-triangle"></i> <strong>Job Failed!</strong> ' + (data.error || 'Please try again.');
+            document.getElementById('qrCodeSection').insertBefore(alert, document.getElementById('qrCodeSection').firstChild);
+        }
+        
+    } catch (error) {
+        console.error('Error checking QR code:', error);
+    }
+}
 </script>
 {% endblock %}
 
