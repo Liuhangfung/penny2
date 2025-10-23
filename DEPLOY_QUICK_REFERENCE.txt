@@ -1,0 +1,118 @@
+╔══════════════════════════════════════════════════════════════╗
+║         MEDIACRAWLER - QUICK DEPLOYMENT REFERENCE            ║
+╚══════════════════════════════════════════════════════════════╝
+
+📦 WHAT TO COPY TO SERVER:
+   → Entire MediaCrawler folder (this directory)
+   → Size: ~50MB (without browser_data)
+
+═══════════════════════════════════════════════════════════════
+
+🪟 WINDOWS SERVER - 5 MINUTE SETUP
+
+1️⃣  Copy to: C:\MediaCrawler\
+
+2️⃣  Open PowerShell as Admin:
+    cd C:\MediaCrawler
+    python -m venv venv
+    .\venv\Scripts\activate
+    pip install -r requirements.txt jinja2 python-multipart
+    playwright install
+
+3️⃣  Open Firewall:
+    New-NetFirewallRule -DisplayName "MediaCrawler" -Direction Inbound -LocalPort 8000 -Protocol TCP -Action Allow
+
+4️⃣  Start:
+    .\START_WEB_APP.bat
+
+5️⃣  Find Server IP:
+    ipconfig
+    (Look for IPv4 Address)
+
+6️⃣  Share with team:
+    http://YOUR-SERVER-IP:8000
+
+═══════════════════════════════════════════════════════════════
+
+🐧 LINUX SERVER - 10 MINUTE SETUP
+
+1️⃣  Copy to: ~/MediaCrawler/
+
+2️⃣  SSH into server and run:
+    cd ~/MediaCrawler
+    python3 -m venv venv
+    source venv/bin/activate
+    pip install -r requirements.txt jinja2 python-multipart
+    playwright install
+
+3️⃣  Open Firewall:
+    sudo ufw allow 8000/tcp
+    sudo ufw reload
+
+4️⃣  Run manually (testing):
+    python webapp/app.py
+
+    OR as service (24/7):
+    See DEPLOY_TO_SERVER.md for systemd setup
+
+5️⃣  Find Server IP:
+    hostname -I
+
+6️⃣  Share with team:
+    http://YOUR-SERVER-IP:8000
+
+═══════════════════════════════════════════════════════════════
+
+🎯 VERIFICATION
+
+✅ From server browser:     http://localhost:8000
+✅ From your PC:            http://SERVER-IP:8000
+✅ From team computers:     http://SERVER-IP:8000
+
+═══════════════════════════════════════════════════════════════
+
+🔥 COMMON ISSUES
+
+❌ Can't connect from other PCs?
+   → Check firewall is open (port 8000)
+   → Verify server IP address is correct
+   → Make sure app is running on 0.0.0.0 (not 127.0.0.1)
+
+❌ Port 8000 already in use?
+   → Change port in webapp/app.py line 261
+   → Update firewall rule for new port
+
+❌ App crashes on startup?
+   → Check Python version: python --version (need 3.9+)
+   → Reinstall deps: pip install -r requirements.txt
+   → Check logs for errors
+
+═══════════════════════════════════════════════════════════════
+
+📱 ACCESS URLs
+
+Dashboard:          http://SERVER-IP:8000/
+Create Job:         http://SERVER-IP:8000/new-job
+View Data:          http://SERVER-IP:8000/view-data
+
+═══════════════════════════════════════════════════════════════
+
+🛠️ SERVICE MANAGEMENT
+
+Windows (with NSSM):
+   Start:      nssm start MediaCrawler
+   Stop:       nssm stop MediaCrawler
+   Restart:    nssm restart MediaCrawler
+   Status:     nssm status MediaCrawler
+
+Linux (systemd):
+   Start:      sudo systemctl start mediacrawler
+   Stop:       sudo systemctl stop mediacrawler
+   Restart:    sudo systemctl restart mediacrawler
+   Status:     sudo systemctl status mediacrawler
+   Logs:       sudo journalctl -u mediacrawler -f
+
+═══════════════════════════════════════════════════════════════
+
+For detailed instructions, see: DEPLOY_TO_SERVER.md
+

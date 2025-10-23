@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - MediaCrawler{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="bi bi-speedometer2"></i> Dashboard
+        </h1>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-md-4 mb-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="bi bi-plus-circle-fill text-primary" style="font-size: 3rem;"></i>
+                <h5 class="card-title mt-3">New Scraping Job</h5>
+                <p class="card-text">Start a new data collection task</p>
+                <a href="/new-job" class="btn btn-primary">
+                    <i class="bi bi-play-fill"></i> Create Job
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="bi bi-table text-success" style="font-size: 3rem;"></i>
+                <h5 class="card-title mt-3">View Data</h5>
+                <p class="card-text">Browse and export scraped data</p>
+                <a href="/view-data" class="btn btn-success">
+                    <i class="bi bi-eye-fill"></i> View Data
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="bi bi-clock-history text-info" style="font-size: 3rem;"></i>
+                <h5 class="card-title mt-3">Job History</h5>
+                <p class="card-text">{{ job_history|length }} completed jobs</p>
+                <button class="btn btn-info" onclick="refreshJobs()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Active Jobs -->
+{% if active_jobs %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-hourglass-split"></i> Active Jobs</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Platform</th>
+                                <th>Keywords</th>
+                                <th>Status</th>
+                                <th>Progress</th>
+                                <th>Started</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for job_id, job in active_jobs.items() %}
+                            <tr>
+                                <td>
+                                    <span class="badge bg-info platform-badge">
+                                        {{ platforms[job.platform][0] }}
+                                    </span>
+                                </td>
+                                <td>{{ job.keywords }}</td>
+                                <td>
+                                    {% if job.status == 'running' %}
+                                        <span class="badge bg-warning">Running</span>
+                                    {% elif job.status == 'completed' %}
+                                        <span class="badge bg-success">Completed</span>
+                                    {% elif job.status == 'failed' %}
+                                        <span class="badge bg-danger">Failed</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Queued</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="progress" style="height: 25px;">
+                                        <div class="progress-bar" role="progressbar" 
+                                             style="width: {{ job.progress }}%" 
+                                             aria-valuenow="{{ job.progress }}" 
+                                             aria-valuemin="0" aria-valuemax="100">
+                                            {{ job.progress }}%
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>{{ job.created_at[:19] }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Recent Job History -->
+{% if job_history %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Recent Jobs</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Platform</th>
+                                <th>Keywords</th>
+                                <th>Status</th>
+                                <th>Max Notes</th>
+                                <th>Completed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for job in job_history|reverse %}
+                            <tr>
+                                <td>
+                                    <span class="badge bg-info platform-badge">
+                                        {{ platforms[job.platform][0] }}
+                                    </span>
+                                </td>
+                                <td>{{ job.keywords }}</td>
+                                <td>
+                                    {% if job.status == 'completed' %}
+                                        <span class="badge bg-success">✓ Completed</span>
+                                    {% elif job.status == 'failed' %}
+                                        <span class="badge bg-danger">✗ Failed</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ job.max_notes }}</td>
+                                <td>{{ job.get('completed_at', 'N/A')[:19] }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-inbox" style="font-size: 4rem; color: #ccc;"></i>
+                <h4 class="mt-3 text-muted">No jobs yet</h4>
+                <p class="text-muted">Start your first scraping job to see results here!</p>
+                <a href="/new-job" class="btn btn-primary mt-3">
+                    <i class="bi bi-plus-circle"></i> Create First Job
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function refreshJobs() {
+    location.reload();
+}
+
+// Auto-refresh every 10 seconds if there are active jobs
+{% if active_jobs %}
+setTimeout(function() {
+    location.reload();
+}, 10000);
+{% endif %}
+</script>
+{% endblock %}
+

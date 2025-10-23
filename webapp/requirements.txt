@@ -1,0 +1,6 @@
+# Additional requirements for MediaCrawler Web Dashboard
+# These are in addition to the main MediaCrawler requirements
+
+jinja2>=3.1.0
+python-multipart>=0.0.20
+
